@@ -72,21 +72,23 @@ def run_train_test(training_data: pd.DataFrame, testing_data: pd.DataFrame) -> L
     #training_data.drop('QUANTIZED_AGE', axis=1, inplace=True)
     #training_data.drop('QUANTIZED_WORK_YEAR', axis=1, inplace=True)
 
-    scale_training = sc.fit_transform(training_data)
-    training_data.loc[:,:] = scale_training
+    training_data.iloc[:,0:-1] = sc.fit_transform(training_data.iloc[:,0:-1].to_numpy())
 
     # Highest F1 so far: hidden = (128,64), max_iter = 1000, lr_init = 0.0003, batch = 16 (drop OCCUPATION_TYPE)
 
     params = {
-        'hidden_layer_sizes': [(128,),(64,128),(128,64),(128,32,32),(128,128),(64,64,32,32)],
+        'hidden_layer_sizes': [(128,),(64,128),(128,64),(128,32,32),(128,128)],
         'max_iter': [1000],
         'learning_rate_init': [0.1,0.01,0.001,0.3,0.03,0.003],
-        'batch_size': [8,16,32,64,128],
+        'batch_size': [8,16,32,64],
     }
 
-    mlp = MLPClassifier()
-    clf = FindHyperParams(mlp, params)
-    clf.fit(scale_training, training_label)
+    mlp = MLPClassifier(hidden_layer_sizes=(128,64,32),
+                        max_iter=1000,
+                        learning_rate_init=0.0003,
+                        batch_size=64)
+    #clf = FindHyperParams(mlp, params)
+    mlp.fit(training_data, training_label)
     
     testing_data['QUANTIZED_INC'] = le.fit_transform(testing_data['QUANTIZED_INC'])
     testing_data['QUANTIZED_AGE'] = le.fit_transform(testing_data['QUANTIZED_AGE'])
@@ -101,10 +103,8 @@ def run_train_test(training_data: pd.DataFrame, testing_data: pd.DataFrame) -> L
     #testing_data.drop('QUANTIZED_AGE', axis=1, inplace=True)
     #testing_data.drop('QUANTIZED_WORK_YEAR', axis=1, inplace=True)
 
-    scale_testing = sc.fit_transform(testing_data)
-    testing_data.loc[:,:] = scale_testing
-
-    predict = mlp.predict(scale_testing)
+    testing_data.iloc[:,0:-1] = sc.fit_transform(testing_data.iloc[:,0:-1].to_numpy())
+    predict = mlp.predict(testing_data)
     
     return predict
 
